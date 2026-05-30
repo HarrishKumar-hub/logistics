@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { GoogleMap, InfoWindowF, MarkerF, useJsApiLoader } from '@react-google-maps/api';
 import { AlertCircle, List, Map, Plus, Truck, X } from 'lucide-react';
@@ -40,7 +40,7 @@ type Trip = {
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
-export default function FleetTracker() {
+function FleetTrackerContent() {
   const [fleetStatus, setFleetStatus] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'table' | 'map'>('table');
@@ -386,5 +386,13 @@ export default function FleetTracker() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function FleetTracker() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-steel/50 font-medium">Loading Fleet Tracker...</div>}>
+      <FleetTrackerContent />
+    </Suspense>
   );
 }
