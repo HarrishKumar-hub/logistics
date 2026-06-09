@@ -5,9 +5,9 @@ import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { Radio, Activity, Navigation, Truck, Package } from 'lucide-react';
-import dynamic from 'next/dynamic';
+import nextDynamic from 'next/dynamic';
 
-const FactoryMap = dynamic(() => import('@/components/maps/FactoryMap'), { ssr: false });
+const FactoryMap = nextDynamic(() => import('@/components/maps/FactoryMap'), { ssr: false });
 
 export interface Trip {
   id: string;

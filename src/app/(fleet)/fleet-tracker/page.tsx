@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { Navigation, Radio, Activity } from 'lucide-react';
-import dynamic from 'next/dynamic';
+import nextDynamic from 'next/dynamic';
 
-const FleetMap = dynamic(() => import('@/components/maps/FleetMap'), { ssr: false });
+const FleetMap = nextDynamic(() => import('@/components/maps/FleetMap'), { ssr: false });
 
 export interface ActiveVehicle {
   id: string;
