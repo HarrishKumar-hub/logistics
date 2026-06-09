@@ -26,8 +26,13 @@ interface ActiveVehicle {
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
 export default function FleetTracker() {
+  const [isMounted, setIsMounted] = useState(false);
   const [activeVehicles, setActiveVehicles] = useState<ActiveVehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<ActiveVehicle | null>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   
   // Directions state
   const [mapInstance, setMapInstance] = useState<any>(null);
@@ -158,6 +163,16 @@ export default function FleetTracker() {
     }
     return DEFAULT_CENTER;
   }, [selectedVehicle]);
+
+  if (!isMounted) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-slate-50">
+        <p className="text-sm font-bold tracking-widest text-slate-400 uppercase animate-pulse">
+          Initializing Satellite Uplink...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-[calc(100vh-80px-4rem)] rounded-2xl border border-slate-200 overflow-hidden flex bg-white font-sans shadow-sm">

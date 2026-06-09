@@ -28,9 +28,14 @@ const defaultCenter = {
 };
 
 export default function FactoryTracking() {
+  const [isMounted, setIsMounted] = useState(false);
   const [activeTrips, setActiveTrips] = useState<Trip[]>([]);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [directionsResponse, setDirectionsResponse] = useState<google.maps.DirectionsResult | null>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
@@ -126,6 +131,16 @@ export default function FactoryTracking() {
     scale: 1.5,
     anchor: isLoaded ? new window.google.maps.Point(12, 12) : undefined,
   };
+
+  if (!isMounted) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-slate-50">
+        <p className="text-sm font-bold tracking-widest text-slate-400 uppercase animate-pulse">
+          Initializing Satellite Uplink...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="absolute inset-0 flex bg-slate-50 font-sans text-slate-800 overflow-hidden">
