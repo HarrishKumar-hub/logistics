@@ -1,16 +1,13 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { MapPin, Navigation, Radio, Truck, Activity } from 'lucide-react';
-import { GoogleMap, InfoWindowF, MarkerF, useJsApiLoader, DirectionsRenderer } from '@react-google-maps/api';
+import { Navigation, Radio, Activity } from 'lucide-react';
+import dynamic from 'next/dynamic';
 
-const DEFAULT_CENTER = {
-  lat: 11.6643,
-  lng: 78.1460
-};
+const FleetMap = dynamic(() => import('@/components/maps/FleetMap'), { ssr: false });
 
-interface ActiveVehicle {
+export interface ActiveVehicle {
   id: string;
   truckId: string;
   driverName: string;
@@ -23,40 +20,9 @@ interface ActiveVehicle {
   };
 }
 
-const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-
 export default function FleetTracker() {
-  const [isMounted, setIsMounted] = useState(false);
   const [activeVehicles, setActiveVehicles] = useState<ActiveVehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<ActiveVehicle | null>(null);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-  
-  // Directions state
-  const [mapInstance, setMapInstance] = useState<any>(null);
-  const [directions, setDirections] = useState<any>(null);
-
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-  });
-
-  const mapOptions = useMemo(() => ({
-    disableDefaultUI: true, // Hides cluttered map controls for a clean UI
-    zoomControl: true,
-    styles: [
-      // Minimalist map styling to match the brand
-      { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-      { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-      { elementType: 'geometry', stylers: [{ color: '#f8fafc' }] }, // slate-50
-      { elementType: 'labels.text.fill', stylers: [{ color: '#64748b' }] }, // slate-500
-      { elementType: 'labels.text.stroke', stylers: [{ color: '#ffffff' }] },
-      { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
-      { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#fde68a' }] }, // amber-200
-    ]
-  }), []);
 
   // Real-Time Firestore Synced Stream
   useEffect(() => {
@@ -125,55 +91,6 @@ export default function FleetTracker() {
     return () => unsubscribe();
   }, []);
 
-  // Directions Route Calculation Hook
-  useEffect(() => {
-    if (!selectedVehicle) {
-      setDirections(null);
-      return;
-    }
-    if (typeof window === 'undefined' || !window.google) return;
-    
-    const directionsService = new window.google.maps.DirectionsService();
-    
-    directionsService.route(
-      {
-        origin: selectedVehicle.source, // e.g., "Coimbatore"
-        destination: selectedVehicle.destination, // e.g., "Mumbai"
-        travelMode: window.google.maps.TravelMode.DRIVING,
-      },
-      (result, status) => {
-        if (status === window.google.maps.DirectionsStatus.OK && result) {
-          setDirections(result);
-          // Automatically zoom and pan to fit the entire route
-          if (mapInstance) {
-            mapInstance.fitBounds(result.routes[0].bounds);
-          }
-        } else {
-          console.error("Directions request failed due to " + status);
-          alert(`Google Maps Directions failed: ${status}. Check console for details.`);
-        }
-      }
-    );
-  }, [selectedVehicle, mapInstance]);
-
-  // Fallback center coordinates
-  const mapCenter = useMemo(() => {
-    if (selectedVehicle?.currentLocation) {
-      return selectedVehicle.currentLocation;
-    }
-    return DEFAULT_CENTER;
-  }, [selectedVehicle]);
-
-  if (!isMounted) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-slate-50">
-        <p className="text-sm font-bold tracking-widest text-slate-400 uppercase animate-pulse">
-          Initializing Satellite Uplink...
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="w-full h-[calc(100vh-80px-4rem)] rounded-2xl border border-slate-200 overflow-hidden flex bg-white font-sans shadow-sm">
       
@@ -236,89 +153,13 @@ export default function FleetTracker() {
         </div>
       </div>
 
-      {/* Right Area: Google Map Canvas */}
+      {/* Right Area: Dynamic Google Map Canvas */}
       <div className="flex-1 relative bg-slate-100">
-        {!isLoaded ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 bg-slate-50">
-            <Radio size={48} className="animate-pulse mb-4 opacity-50 text-amber-500" />
-            <p className="font-bold text-sm tracking-wide uppercase font-mono">Initializing Satellite Uplink...</p>
-          </div>
-        ) : (
-          <GoogleMap
-            mapContainerStyle={{ width: '100%', height: '100%' }}
-            zoom={selectedVehicle ? 12 : 7}
-            center={mapCenter}
-            options={mapOptions}
-            onLoad={(map) => setMapInstance(map)} // Capture map instance for fitBounds
-          >
-            {/* 1. Draw the Swiggy-style Route Line */}
-            {directions && (
-              <DirectionsRenderer
-                directions={directions}
-                options={{
-                  suppressMarkers: true, // Hides default A and B pins
-                  polylineOptions: {
-                    strokeColor: '#f59e0b', // Brand gold polyline
-                    strokeWeight: 5,
-                    strokeOpacity: 0.8,
-                  },
-                }}
-              />
-            )}
-
-            {/* 2. Draw active unselected vehicles as smaller markers */}
-            {activeVehicles.map(vehicle => (
-              vehicle.currentLocation && selectedVehicle?.id !== vehicle.id && (
-                <MarkerF
-                  key={vehicle.id}
-                  position={vehicle.currentLocation}
-                  onClick={() => setSelectedVehicle(vehicle)}
-                  icon={typeof window !== 'undefined' && window.google ? {
-                    path: window.google.maps.SymbolPath.CIRCLE,
-                    fillColor: '#64748b', // Slate gray for other fleet units
-                    fillOpacity: 0.8,
-                    strokeWeight: 1.5,
-                    strokeColor: '#ffffff',
-                    scale: 5,
-                  } : undefined}
-                />
-              )
-            ))}
-
-            {/* 3. Draw the Live Selected Truck Marker */}
-            {selectedVehicle?.currentLocation && (
-              <MarkerF
-                position={selectedVehicle.currentLocation}
-                icon={typeof window !== 'undefined' && window.google ? {
-                  // SVG Path for a heavy transport truck
-                  path: "M20,8h-3V4c0-1.1-0.9-2-2-2H3C1.9,2,1,2.9,1,4v11h2c0,1.66,1.34,3,3,3s3-1.34,3-3h6c0,1.66,1.34,3,3,3s3-1.34,3-3h2v-5 L20,8z M6,16.5c-0.83,0-1.5-0.67-1.5-1.5s0.67-1.5,1.5-1.5s1.5,0.67,1.5,1.5S6.83,16.5,6,16.5z M18,16.5c-0.83,0-1.5-0.67-1.5-1.5 s0.67-1.5,1.5-1.5s1.5,0.67,1.5,1.5S18.83,16.5,18,16.5z M17,12h-4V4h7V12z",
-                  fillColor: '#f59e0b', // Gold truck marker
-                  fillOpacity: 1,
-                  strokeWeight: 1,
-                  strokeColor: '#ffffff',
-                  scale: 1.5,
-                  anchor: new window.google.maps.Point(12, 12),
-                } : undefined}
-              />
-            )}
-
-            {/* Show Info Window above the selected vehicle */}
-            {selectedVehicle && selectedVehicle.currentLocation && (
-              <InfoWindowF
-                position={selectedVehicle.currentLocation}
-                onCloseClick={() => setSelectedVehicle(null)}
-              >
-                <div className="p-2 text-center min-w-[120px] text-slate-800">
-                  <h3 className="font-black text-slate-800 text-sm mb-1">{selectedVehicle.truckId.toUpperCase()}</h3>
-                  <p className="text-xs text-slate-500 font-semibold mb-2">{selectedVehicle.source} → {selectedVehicle.destination}</p>
-                  <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider font-mono">
-                    {Math.round(selectedVehicle.currentLocation.lat * 1000) / 1000}, {Math.round(selectedVehicle.currentLocation.lng * 1000) / 1000}
-                  </span>
-                </div>
-              </InfoWindowF>
-            )}
-          </GoogleMap>
-        )}
+        <FleetMap 
+          activeVehicles={activeVehicles} 
+          selectedVehicle={selectedVehicle} 
+          setSelectedVehicle={setSelectedVehicle} 
+        />
       </div>
 
     </div>
