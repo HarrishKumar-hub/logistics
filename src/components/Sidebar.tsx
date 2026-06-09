@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { LayoutDashboard, Wallet, Route, Truck, Settings, Bell } from 'lucide-react';
+import { LayoutDashboard, Wallet, Route, Truck, Settings, Bell, FileText, Radio } from 'lucide-react';
 
 export default function Sidebar() {
   return (
@@ -26,8 +26,12 @@ export default function Sidebar() {
           Load Market
         </Link>
         <Link href="/fleet" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors opacity-70 hover:opacity-100">
-          <Truck size={20} />
-          Fleet Tracker
+          <FileText size={20} />
+          Dispatch Ledger
+        </Link>
+        <Link href="/fleet-tracker" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors opacity-70 hover:opacity-100">
+          <Radio size={20} className="text-gold" />
+          Live Radar Map
         </Link>
         <Link href="/updates" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors opacity-70 hover:opacity-100">
           <Bell size={20} />
